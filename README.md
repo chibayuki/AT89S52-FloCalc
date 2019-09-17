@@ -1,1 +1,1 @@
-# AT89S52-FloCalc
+# AT89S52 Calculator
