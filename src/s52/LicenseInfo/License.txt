@@ -1,0 +1,6 @@
+﻿Copyright (C) 2016 chibayuki.visualstudio.com
+
+Calc
+Version 16.7.11.0.flo.3
+
+Calc is released under the GPLv3 license, see GPLv3.txt for more information.
