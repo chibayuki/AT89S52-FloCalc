@@ -1,0 +1,785 @@
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 1   
+
+
+C51 COMPILER V8.02, COMPILATION OF MODULE CALC
+OBJECT MODULE PLACED IN Calc.OBJ
+COMPILER INVOKED BY: C:\Program Files (x86)\Keil\C51\BIN\C51.EXE Calc.c OPTIMIZE(SIZE) BROWSE DEBUG OBJECTEXTEND
+
+line level    source
+
+   1          /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+   2          Calc
+   3          Version 16.7.11.0.flo.3
+   4          Copyright (C) 2016 chibayuki.visualstudio.com
+   5          All Rights Reserved
+   6          * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+   7          
+   8          #include <reg52.h>
+   9          #include <intrins.h>
+  10          #include <stdio.h>
+  11          #include <stdlib.h>
+  12          #include <math.h>
+  13          #include <ctype.h>
+  14          #include <string.h>
+  15          
+  16          #define KEYBRD_MATRIX P3 // ¾ØÕó¼üÅÌ¼Ä´æÆ÷¡£
+  17          #define KEYBRD_EXTEND P1 // À©Õ¹°´¼ü¼Ä´æÆ÷¡£
+  18          
+  19          #define DG_DATA P0 // ÊýÂë¹ÜÊý¾Ý¼Ä´æÆ÷¡£
+  20          #define DG_DIV P2 // ÊýÂë¹ÜÑ¡Ôñ¼Ä´æÆ÷¡£
+  21          
+  22          #define MINVAL (-9999999.0) // ÔÊÐíµÄ×îÐ¡Öµ¡£
+  23          #define MAXVAL (99999999.0) // ÔÊÐíµÄ×î´óÖµ¡£
+  24          
+  25          typedef unsigned char uchar;
+  26          typedef unsigned int uint;
+  27          
+  28          void delayms(uint);
+  29          uchar getkeycode();
+  30          void keyevent();
+  31          void clear();
+  32          int firstnum(char*);
+  33          uint numcount(char*);
+  34          int strchid(char*, char);
+  35          void stradd(char*, char);
+  36          void strdel(char*);
+  37          void strclear(char*);
+  38          void curvalappend(char);
+  39          void curvalbackspace();
+  40          void calc();
+  41          uchar getdgregval(int, uint, uint);
+  42          void refreshdgvalue();
+  43          void refreshdgbuffer();
+  44          void showdgdata();
+  45          
+  46          // ÊýÂë¹ÜÑ¡Ôñ¼Ä´æÆ÷µÄÎ»£º
+  47          sbit Pdiv0 = DG_DIV ^ 0;
+  48          sbit Pdiv1 = DG_DIV ^ 1;
+  49          sbit Pdiv2 = DG_DIV ^ 2;
+  50          sbit Pdiv3 = DG_DIV ^ 3;
+  51          sbit Pdiv4 = DG_DIV ^ 4;
+  52          sbit Pdiv5 = DG_DIV ^ 5;
+  53          sbit Pdiv6 = DG_DIV ^ 6;
+  54          sbit Pdiv7 = DG_DIV ^ 7;
+  55          
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 2   
+
+  56          uchar code keycodelist[] = { '8', '9', '/', 'C', '5', '6', '*', 'B', '2', '3', '-', '\0', '0', '=', '+', '
+             -\0' }; // °´¼ü´úÂëÁÐ±í¡£
+  57          uchar code keycodelist_extend[] = { '7', '4', '1', '.' }; // °´¼ü´úÂëÁÐ±í£¨À©Õ¹£©¡£
+  58          uchar keycode = '\0', prekeycode = '\0'; // µ±Ç°°´¼ü´úÂë£¬ÉÏ´Î°´¼ü´úÂë¡£
+  59          uchar operatorcode = '\0'; // ×î½üµÄÔËËã·û´úÂë¡£
+  60          char idata curvalstr[10]; // ÕýÔÚÊäÈëµÄÊýÖµµÄ×Ö·û´®¸ñÊ½£¨º¬¸ººÅ»òÐ¡Êýµã£©¡£
+  61          char idata rsvalstr[18]; // ¼ÆËã½á¹ûµÄÊýÖµµÄ×Ö·û´®¸ñÊ½£¨º¬¸ººÅ»òÐ¡Êýµã£©¡£
+  62          double value0 = 0, value1 = 0, value = 0; // ×ó²Ù×÷Êý£¬ÓÒ²Ù×÷Êý£¬¼ÆËã½á¹û»òµ±Ç°ÊýÖµ¡£
+  63          uint flag0 = 0, flag1 = 0; // ÊÇ£¨1£©·ñ²»ÔÊÐíÊäÈë×ó²Ù×÷Êý£¬ÊÇ£¨1£©·ñÕýÔÚµÈ´ýÊäÈëÓÒ²Ù×÷Êý¡£
+  64          uint error = 0; // ¼ÆËãÊÇ£¨1£©·ñ·¢ÉúÁË´íÎó¡£
+  65          int dotdg = -1; // µ±Ç°Ó¦ÏÔÊ¾Ð¡ÊýµãµÄÊýÂë¹Ü¡£
+  66          int idata dgvalue[8] = { 255, 255, 255, 255, 255, 255, 255, 255 }; // Ã¿¸öÊýÂë¹ÜÓ¦ÏÔÊ¾µÄÊýÖµ¡£
+  67          uchar idata dgbuffer[8] = { 255, 255, 255, 255, 255, 255, 255, 255 }; // Ã¿¸öÊýÂë¹ÜÓ¦ÏÔÊ¾µÄÊýÖµµÄ¼Ä´æÆ÷Öµ¡
+             -£
+  68          
+  69          void main()
+  70          {
+  71   1              clear();
+  72   1      
+  73   1              while (1)
+  74   1              {
+  75   2                      keycode = getkeycode();
+  76   2      
+  77   2                      if (prekeycode != keycode)
+  78   2                      {
+  79   3                              prekeycode = keycode;
+  80   3      
+  81   3                              keyevent();
+  82   3                      }
+  83   2      
+  84   2                      refreshdgvalue();
+  85   2      
+  86   2                      refreshdgbuffer();
+  87   2      
+  88   2                      showdgdata();
+  89   2              }
+  90   1      }
+  91          
+  92          // ÑÓ³ÙÖ¸¶¨µÄºÁÃëÊý¡£
+  93          void delayms(uint ms)
+  94          {
+  95   1              uint i, j;
+  96   1      
+  97   1              for (i = 0; i < ms; i++)
+  98   1              {
+  99   2                      for (j = 0; j < 110; j++);
+ 100   2              }
+ 101   1      }
+ 102          
+ 103          // »ñÈ¡°´¼ü´úÂë¡£
+ 104          uchar getkeycode()
+ 105          {
+ 106   1              uint row = -1, column = -1;
+ 107   1      
+ 108   1              KEYBRD_MATRIX = 0x0F;
+ 109   1      
+ 110   1              if ((KEYBRD_MATRIX & 0x0F) != 0x0F)
+ 111   1              {
+ 112   2                      delayms(10);
+ 113   2      
+ 114   2                      if ((KEYBRD_MATRIX & 0x0F) != 0x0F)
+ 115   2                      {
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 3   
+
+ 116   3                              int i;
+ 117   3                              int tmp;
+ 118   3      
+ 119   3                              tmp = KEYBRD_MATRIX % 16;
+ 120   3      
+ 121   3                              switch (15 - KEYBRD_MATRIX % 16)
+ 122   3                              {
+ 123   4                              case 1: column = 0; break;
+ 124   4                              case 2: column = 1; break;
+ 125   4                              case 4: column = 2; break;
+ 126   4                              case 8: column = 3; break;
+ 127   4                              }
+ 128   3      
+ 129   3                              for (i = 0; i <= 3; i++)
+ 130   3                              {
+ 131   4                                      KEYBRD_MATRIX = (uint)(0xFF - pow(2, i + 4));
+ 132   4      
+ 133   4                                      if (KEYBRD_MATRIX % 16 == tmp)
+ 134   4                                      {
+ 135   5                                              row = i;
+ 136   5      
+ 137   5                                              break;
+ 138   5                                      }
+ 139   4                              }
+ 140   3      
+ 141   3                              return keycodelist[row * 4 + column];
+ 142   3                      }
+ 143   2              }
+ 144   1      
+ 145   1              if (15 - KEYBRD_EXTEND % 16 != 0)
+ 146   1              {
+ 147   2                      delayms(10);
+ 148   2      
+ 149   2                      if (15 - KEYBRD_EXTEND % 16 != 0)
+ 150   2                      {
+ 151   3                              switch (15 - KEYBRD_EXTEND % 16)
+ 152   3                              {
+ 153   4                              case 1: return keycodelist_extend[0];
+ 154   4                              case 2: return keycodelist_extend[1];
+ 155   4                              case 4: return keycodelist_extend[2];
+ 156   4                              case 8: return keycodelist_extend[3];
+ 157   4                              }
+ 158   3                      }
+ 159   2              }
+ 160   1      
+ 161   1              return '\0';
+ 162   1      }
+ 163          
+ 164          // ÏìÓ¦°´¼ü²Ù×÷¡£
+ 165          void keyevent()
+ 166          {
+ 167   1              if (keycode == 'C')
+ 168   1              {
+ 169   2                      clear();
+ 170   2              }
+ 171   1              else
+ 172   1              {
+ 173   2                      if (error == 0)
+ 174   2                      {
+ 175   3                              if (keycode >= '0' && keycode <= '9')
+ 176   3                              {
+ 177   4                                      curvalappend(keycode);
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 4   
+
+ 178   4                              }
+ 179   3                              else if (keycode == '.')
+ 180   3                              {
+ 181   4                                      curvalappend('.');
+ 182   4                              }
+ 183   3                              else if (keycode == 'B')
+ 184   3                              {
+ 185   4                                      curvalbackspace();
+ 186   4                              }
+ 187   3                              else if (keycode == '+' || keycode == '-' || keycode == '*' || keycode == '/')
+ 188   3                              {
+ 189   4                                      if (flag1 == 0)
+ 190   4                                      {
+ 191   5                                              calc();
+ 192   5      
+ 193   5                                              strclear(curvalstr);
+ 194   5      
+ 195   5                                              value0 = value;
+ 196   5                                              value1 = 0;
+ 197   5      
+ 198   5                                              flag0 = 1;
+ 199   5                                              flag1 = 1;
+ 200   5      
+ 201   5                                              operatorcode = keycode;
+ 202   5                                      }
+ 203   4                                      else
+ 204   4                                      {
+ 205   5                                              if (keycode == '-')
+ 206   5                                              {
+ 207   6                                                      if (operatorcode == '\0')
+ 208   6                                                      {
+ 209   7                                                              operatorcode = '-';
+ 210   7                                                      }
+ 211   6                                                      else
+ 212   6                                                      {
+ 213   7                                                              if (operatorcode == '+')
+ 214   7                                                              {
+ 215   8                                                                      operatorcode = '-';
+ 216   8                                                              }
+ 217   7                                                              else if (operatorcode == '*' || operatorcode == '/')
+ 218   7                                                              {
+ 219   8                                                                      curvalappend('-');
+ 220   8                                                              }
+ 221   7                                                      }
+ 222   6                                              }
+ 223   5                                              else if (keycode == '+' || keycode == '*' || keycode == '/')
+ 224   5                                              {
+ 225   6                                                      operatorcode = keycode;
+ 226   6      
+ 227   6                                                      strclear(curvalstr);
+ 228   6                                              }
+ 229   5                                      }
+ 230   4                              }
+ 231   3                              else if (keycode == '=')
+ 232   3                              {
+ 233   4                                      calc();
+ 234   4      
+ 235   4                                      keycode = '\0';
+ 236   4      
+ 237   4                                      operatorcode = '\0';
+ 238   4      
+ 239   4                                      strclear(curvalstr);
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 5   
+
+ 240   4      
+ 241   4                                      value0 = value;
+ 242   4                                      value1 = 0;
+ 243   4      
+ 244   4                                      flag0 = 1;
+ 245   4                                      flag1 = 0;
+ 246   4                              }
+ 247   3                      }
+ 248   2                      else
+ 249   2                      {
+ 250   3                              keycode = '\0';
+ 251   3      
+ 252   3                              operatorcode = '\0';
+ 253   3      
+ 254   3                              strclear(curvalstr);
+ 255   3      
+ 256   3                              value0 = value1 = value = 0;
+ 257   3      
+ 258   3                              flag0 = flag1 = 0;
+ 259   3                      }
+ 260   2              }
+ 261   1      }
+ 262          
+ 263          // Çå³ý£¨³õÊ¼»¯£©¡£
+ 264          void clear()
+ 265          {
+ 266   1              keycode = '\0';
+ 267   1      
+ 268   1              operatorcode = '\0';
+ 269   1      
+ 270   1              strclear(curvalstr);
+ 271   1      
+ 272   1              value0 = value1 = value = 0;
+ 273   1      
+ 274   1              flag0 = flag1 = 0;
+ 275   1      
+ 276   1              error = 0;
+ 277   1      }
+ 278          
+ 279          // ¼ÆËã×Ö·û´®ÖÐµÚÒ»¸ö³öÏÖµÄÊý×Ö¡£
+ 280          int firstnum(char* s)
+ 281          {
+ 282   1              int i = 0;
+ 283   1      
+ 284   1              while (s[i] != '\0')
+ 285   1              {
+ 286   2                      if (s[i] >= '0' && s[i] <= '9')
+ 287   2                      {
+ 288   3                              return (s[i] - '0');
+ 289   3                      }
+ 290   2      
+ 291   2                      i++;
+ 292   2              }
+ 293   1      
+ 294   1              return -1;
+ 295   1      }
+ 296          
+ 297          // ¼ÆËã×Ö·û´®ÖÐÊý×ÖµÄ¸öÊý¡£
+ 298          uint numcount(char* s)
+ 299          {
+ 300   1              uint n = 0;
+ 301   1      
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 6   
+
+ 302   1              int i = 0;
+ 303   1      
+ 304   1              while (s[i] != '\0')
+ 305   1              {
+ 306   2                      if (s[i] >= '0' && s[i] <= '9')
+ 307   2                      {
+ 308   3                              n++;
+ 309   3                      }
+ 310   2      
+ 311   2                      i++;
+ 312   2              }
+ 313   1      
+ 314   1              return n;
+ 315   1      }
+ 316          
+ 317          // ¼ÆËãÖ¸¶¨×Ö·ûÔÚ×Ö·û´®ÖÐµÄË÷Òý¡£
+ 318          int strchid(char* s, char c)
+ 319          {
+ 320   1              int i = 0;
+ 321   1      
+ 322   1              while (s[i] != '\0')
+ 323   1              {
+ 324   2                      if (s[i] == c)
+ 325   2                      {
+ 326   3                              return i;
+ 327   3                      }
+ 328   2      
+ 329   2                      i++;
+ 330   2              }
+ 331   1      
+ 332   1              return -1;
+ 333   1      }
+ 334          
+ 335          // ÔÚ×Ö·û´®µÄÄ©Î²Ìí¼ÓÒ»¸ö×Ö·û¡£
+ 336          void stradd(char* s, char c)
+ 337          {
+ 338   1              uint len = strlen(s);
+ 339   1      
+ 340   1              s[len] = c;
+ 341   1              s[len + 1] = '\0';
+ 342   1      }
+ 343          
+ 344          // É¾³ý×Ö·û´®µÄ×îºóÒ»¸ö×Ö·û¡£
+ 345          void strdel(char* s)
+ 346          {
+ 347   1              uint len = strlen(s);
+ 348   1      
+ 349   1              s[len - 1] = '\0';
+ 350   1      }
+ 351          
+ 352          // Çå¿Õ×Ö·û´®¡£
+ 353          void strclear(char* s)
+ 354          {
+ 355   1              uint len = strlen(s);
+ 356   1      
+ 357   1              int i;
+ 358   1      
+ 359   1              for (i = 0; i < len; i++)
+ 360   1              {
+ 361   2                      s[i] = '\0';
+ 362   2              }
+ 363   1      }
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 7   
+
+ 364          
+ 365          // ÊäÈë¸¡µãÊý¡£
+ 366          void curvalappend(char c)
+ 367          {
+ 368   1              uint len = strlen(curvalstr);
+ 369   1              int dot = strchid(curvalstr, '.');
+ 370   1      
+ 371   1              if ((dot >= 0 && len <= 8) || len <= 7)
+ 372   1              {
+ 373   2                      if (c == '-')
+ 374   2                      {
+ 375   3                              if (len == 0)
+ 376   3                              {
+ 377   4                                      stradd(curvalstr, '-');
+ 378   4                                      stradd(curvalstr, '0');
+ 379   4                              }
+ 380   3                      }
+ 381   2                      else if (c == '0')
+ 382   2                      {
+ 383   3                              if (len == 0 || (dot == -1 && firstnum(curvalstr) != 0) || dot >= 0)
+ 384   3                              {
+ 385   4                                      stradd(curvalstr, '0');
+ 386   4                              }
+ 387   3                      }
+ 388   2                      else if (c >= '1' && c <= '9')
+ 389   2                      {
+ 390   3                              if (len == 0 || firstnum(curvalstr) != 0 || dot >= 0)
+ 391   3                              {
+ 392   4                                      stradd(curvalstr, c);
+ 393   4                              }
+ 394   3                              else
+ 395   3                              {
+ 396   4                                      strdel(curvalstr);
+ 397   4                                      stradd(curvalstr, c);
+ 398   4                              }
+ 399   3                      }
+ 400   2                      else if (c == '.')
+ 401   2                      {
+ 402   3                              if (len == 0)
+ 403   3                              {
+ 404   4                                      stradd(curvalstr, '0');
+ 405   4                                      stradd(curvalstr, '.');
+ 406   4                              }
+ 407   3                              else if (dot == -1)
+ 408   3                              {
+ 409   4                                      stradd(curvalstr, '.');
+ 410   4                              }
+ 411   3                      }
+ 412   2              }
+ 413   1      
+ 414   1              if (flag0 == 0)
+ 415   1              {
+ 416   2                      value0 = atof(curvalstr);
+ 417   2      
+ 418   2                      value = value0;
+ 419   2              }
+ 420   1              else
+ 421   1              {
+ 422   2                      value1 = atof(curvalstr);
+ 423   2      
+ 424   2                      value = value1;
+ 425   2      
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 8   
+
+ 426   2                      flag1 = 0;
+ 427   2              }
+ 428   1      }
+ 429          
+ 430          // ÍË¸ñ¡£
+ 431          void curvalbackspace()
+ 432          {
+ 433   1              uint len = strlen(curvalstr);
+ 434   1      
+ 435   1              if (len > 0)
+ 436   1              {
+ 437   2                      if (numcount(curvalstr) > 0)
+ 438   2                      {
+ 439   3                              strdel(curvalstr);
+ 440   3                      }
+ 441   2      
+ 442   2                      if (numcount(curvalstr) == 0)
+ 443   2                      {
+ 444   3                              stradd(curvalstr, '0');
+ 445   3                      }
+ 446   2              }
+ 447   1      }
+ 448          
+ 449          // ¼ÆËã¡£
+ 450          void calc()
+ 451          {
+ 452   1              switch (operatorcode)
+ 453   1              {
+ 454   2              case '+':
+ 455   2                      value = value0 + value1;
+ 456   2      
+ 457   2                      if (value < MINVAL || value > MAXVAL)
+ 458   2                      {
+ 459   3                              error = 1;
+ 460   3                      }
+ 461   2                      break;
+ 462   2      
+ 463   2              case '-':
+ 464   2                      value = value0 - value1;
+ 465   2      
+ 466   2                      if (value < MINVAL || value > MAXVAL)
+ 467   2                      {
+ 468   3                              error = 1;
+ 469   3                      }
+ 470   2                      break;
+ 471   2      
+ 472   2              case '*':
+ 473   2                      value = value0 * value1;
+ 474   2      
+ 475   2                      if (value < MINVAL || value > MAXVAL)
+ 476   2                      {
+ 477   3                              error = 1;
+ 478   3                      }
+ 479   2                      break;
+ 480   2      
+ 481   2              case '/':
+ 482   2                      if (value1 == 0)
+ 483   2                      {
+ 484   3                              error = 1;
+ 485   3                      }
+ 486   2                      else
+ 487   2                      {
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 9   
+
+ 488   3                              value = value0 / value1;
+ 489   3      
+ 490   3                              if (value < MINVAL || value > MAXVAL)
+ 491   3                              {
+ 492   4                                      error = 1;
+ 493   4                              }
+ 494   3                      }
+ 495   2                      break;
+ 496   2              }
+ 497   1      }
+ 498          
+ 499          uchar code dgreglist[] = {
+ 500                  0xC0, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8, 0x80, 0x90, /*0-9*/
+ 501                  0x88, 0x83, 0xC6, 0xA1, 0x86, 0x8E,/*A-F*/
+ 502                  0x90, 0x89, 0xF9, 0xF1, 0xFF, 0xC7, 0xFF, 0xC8, 0xA3, 0x8C,/*G-P*/
+ 503                  0x98, 0xAF, 0x92, 0xFF, 0xC1, 0xC1, 0xFF, 0xFF, 0x91, 0xA4/*Q-Z*/
+ 504          }; // ¹²Ñô¼«ÊýÂë¹Ü×Ö·û¼¯¡£
+ 505          
+ 506             // ÔÚÊýÂë¹ÜÉÏÏÔÊ¾Ò»¸ö×Ö·û£¬·µ»Ø´ËÊ±¼Ä´æÆ÷Ó¦È¡ºÎÖµ¡£
+ 507          uchar getdgregval(int val, uint showdot, uint comcath)
+ 508          {
+ 509   1              uchar P;
+ 510   1      
+ 511   1              if (val >= 0 && val <= 35)
+ 512   1              {
+ 513   2                      P = dgreglist[val];
+ 514   2              }
+ 515   1              else if (val == -1) // "-"ºÅ
+ 516   1              {
+ 517   2                      P = 0xBF;
+ 518   2              }
+ 519   1              else if (val == 255) // ²»ÏÔÊ¾
+ 520   1              {
+ 521   2                      P = 0xFF;
+ 522   2              }
+ 523   1              else
+ 524   1              {
+ 525   2                      P = 0xFF;
+ 526   2              }
+ 527   1      
+ 528   1              if (showdot != 0)
+ 529   1              {
+ 530   2                      P = P - 0x80;
+ 531   2              }
+ 532   1      
+ 533   1              if (comcath != 0)
+ 534   1              {
+ 535   2                      P = 0xFF - P;
+ 536   2              }
+ 537   1      
+ 538   1              return P;
+ 539   1      }
+ 540          
+ 541          // ¸ñÊ½»¯¼ÆËã½á¹û×Ö·û´®¡£
+ 542          void formatrsvalstr()
+ 543          {
+ 544   1              int dot_rs;
+ 545   1      
+ 546   1              sprintf(rsvalstr, "%0.7f", value);
+ 547   1      
+ 548   1              dot_rs = strchid(rsvalstr, '.');
+ 549   1      
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 10  
+
+ 550   1              if (dot_rs >= 0 && dot_rs <= 7)
+ 551   1              {
+ 552   2                      rsvalstr[9] = '\0';
+ 553   2              }
+ 554   1              else
+ 555   1              {
+ 556   2                      rsvalstr[8] = '\0';
+ 557   2              }
+ 558   1      
+ 559   1              dot_rs = strchid(rsvalstr, '.');
+ 560   1      
+ 561   1              if (dot_rs >= 0)
+ 562   1              {
+ 563   2                      uint len_rs = strlen(rsvalstr);
+ 564   2      
+ 565   2                      int t;
+ 566   2      
+ 567   2                      for (t = (int)(len_rs - 1); t >= 0; t--)
+ 568   2                      {
+ 569   3                              if (rsvalstr[t] == '0')
+ 570   3                              {
+ 571   4                                      rsvalstr[t] = '\0';
+ 572   4                              }
+ 573   3                              else
+ 574   3                              {
+ 575   4                                      break;
+ 576   4                              }
+ 577   3                      }
+ 578   2      
+ 579   2                      len_rs = strlen(rsvalstr);
+ 580   2      
+ 581   2                      if (rsvalstr[len_rs - 1] == '.')
+ 582   2                      {
+ 583   3                              rsvalstr[len_rs - 1] = '\0';
+ 584   3                      }
+ 585   2              }
+ 586   1      }
+ 587          
+ 588          // Ë¢ÐÂÃ¿¸öÊýÂë¹ÜÓ¦ÏÔÊ¾µÄÊýÖµ¡£
+ 589          void refreshdgvalue()
+ 590          {
+ 591   1              int i;
+ 592   1      
+ 593   1              dotdg = -1;
+ 594   1      
+ 595   1              if (error == 0)
+ 596   1              {
+ 597   2                      uint len_cur = strlen(curvalstr);
+ 598   2      
+ 599   2                      int t;
+ 600   2      
+ 601   2                      if (len_cur > 0)
+ 602   2                      {
+ 603   3                              i = 7;
+ 604   3      
+ 605   3                              for (t = (int)(len_cur - 1); t >= 0; t--)
+ 606   3                              {
+ 607   4                                      if (curvalstr[t] >= '0' && curvalstr[t] <= '9')
+ 608   4                                      {
+ 609   5                                              dgvalue[i] = (curvalstr[t] - '0');
+ 610   5      
+ 611   5                                              i--;
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 11  
+
+ 612   5                                      }
+ 613   4                                      else if (curvalstr[t] == '-')
+ 614   4                                      {
+ 615   5                                              dgvalue[i] = -1;
+ 616   5      
+ 617   5                                              i--;
+ 618   5                                      }
+ 619   4                                      else if (curvalstr[t] == '.')
+ 620   4                                      {
+ 621   5                                              dotdg = i;
+ 622   5                                      }
+ 623   4                              }
+ 624   3                      }
+ 625   2                      else
+ 626   2                      {
+ 627   3                              if (value == 0)
+ 628   3                              {
+ 629   4                                      dgvalue[7] = 0;
+ 630   4      
+ 631   4                                      i = 6;
+ 632   4                              }
+ 633   3                              else
+ 634   3                              {
+ 635   4                                      uint len_rs;
+ 636   4      
+ 637   4                                      formatrsvalstr();
+ 638   4      
+ 639   4                                      len_rs = strlen(rsvalstr);
+ 640   4      
+ 641   4                                      i = 7;
+ 642   4      
+ 643   4                                      for (t = (int)(len_rs - 1); t >= 0; t--)
+ 644   4                                      {
+ 645   5                                              if (rsvalstr[t] >= '0' && rsvalstr[t] <= '9')
+ 646   5                                              {
+ 647   6                                                      dgvalue[i] = (rsvalstr[t] - '0');
+ 648   6      
+ 649   6                                                      i--;
+ 650   6                                              }
+ 651   5                                              else if (rsvalstr[t] == '-')
+ 652   5                                              {
+ 653   6                                                      dgvalue[i] = -1;
+ 654   6      
+ 655   6                                                      i--;
+ 656   6                                              }
+ 657   5                                              else if (rsvalstr[t] == '.')
+ 658   5                                              {
+ 659   6                                                      dotdg = i;
+ 660   6                                              }
+ 661   5                                      }
+ 662   4                              }
+ 663   3                      }
+ 664   2      
+ 665   2                      for (; i >= 0; i--)
+ 666   2                      {
+ 667   3                              dgvalue[i] = 255;
+ 668   3                      }
+ 669   2              }
+ 670   1              else
+ 671   1              {
+ 672   2                      dgvalue[3] = 14;
+ 673   2                      dgvalue[4] = dgvalue[5] = dgvalue[7] = 27;
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 12  
+
+ 674   2                      dgvalue[6] = 24;
+ 675   2      
+ 676   2                      for (i = 2; i >= 0; i--)
+ 677   2                      {
+ 678   3                              dgvalue[i] = 255;
+ 679   3                      }
+ 680   2              }
+ 681   1      }
+ 682          
+ 683          // Ë¢ÐÂÃ¿¸öÊýÂë¹ÜÓ¦ÏÔÊ¾µÄÊýÖµµÄ¼Ä´æÆ÷Öµ¡£
+ 684          void refreshdgbuffer()
+ 685          {
+ 686   1              int i;
+ 687   1      
+ 688   1              for (i = 0; i <= 7; i++)
+ 689   1              {
+ 690   2                      dgbuffer[i] = getdgregval(dgvalue[i], (uint)(i == dotdg ? 1 : 0), 0);
+ 691   2              }
+ 692   1      }
+ 693          
+ 694          // Ê¹ÊýÂë¹ÜÏÔÊ¾ÊýÖµ¡£
+ 695          void showdgdata()
+ 696          {
+ 697   1              Pdiv0 = 0;
+ 698   1              DG_DATA = dgbuffer[0];
+ 699   1              delayms(2);
+ 700   1              Pdiv0 = 1;
+ 701   1      
+ 702   1              Pdiv1 = 0;
+ 703   1              DG_DATA = dgbuffer[1];
+ 704   1              delayms(2);
+ 705   1              Pdiv1 = 1;
+ 706   1      
+ 707   1              Pdiv2 = 0;
+ 708   1              DG_DATA = dgbuffer[2];
+ 709   1              delayms(2);
+ 710   1              Pdiv2 = 1;
+ 711   1      
+ 712   1              Pdiv3 = 0;
+ 713   1              DG_DATA = dgbuffer[3];
+ 714   1              delayms(2);
+ 715   1              Pdiv3 = 1;
+ 716   1      
+ 717   1              Pdiv4 = 0;
+ 718   1              DG_DATA = dgbuffer[4];
+ 719   1              delayms(2);
+ 720   1              Pdiv4 = 1;
+ 721   1      
+ 722   1              Pdiv5 = 0;
+ 723   1              DG_DATA = dgbuffer[5];
+ 724   1              delayms(2);
+ 725   1              Pdiv5 = 1;
+ 726   1      
+ 727   1              Pdiv6 = 0;
+ 728   1              DG_DATA = dgbuffer[6];
+ 729   1              delayms(2);
+ 730   1              Pdiv6 = 1;
+ 731   1      
+ 732   1              Pdiv7 = 0;
+ 733   1              DG_DATA = dgbuffer[7];
+ 734   1              delayms(2);
+ 735   1              Pdiv7 = 1;
+C51 COMPILER V8.02   CALC                                                                  07/12/2016 14:07:57 PAGE 13  
+
+ 736   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   2560    ----
+   CONSTANT SIZE    =     62    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     23      51
+   IDATA SIZE       =     52    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,4 @@
+"STARTUP.obj",
+"Calc.obj" 
+TO "Calc" 
+RAMSIZE(256) 
