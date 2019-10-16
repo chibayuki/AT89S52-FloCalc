@@ -1,0 +1,6 @@
+﻿Copyright © 2019 chibayuki@foxmail.com
+
+模拟器（Simulator）
+Version 16.7.11.0.MCU.191016-0000
+
+"模拟器" (Simulator) is released under the GPLv3 license, see GPLv3.txt for more information.
