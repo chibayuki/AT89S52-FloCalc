@@ -2,7 +2,7 @@
 Copyright © 2019 chibayuki@foxmail.com
 
 模拟器 (Simulator)
-Version 16.7.11.0.MCU.191016-0000
+Version 16.7.11.0.MCU.191017-0000
 
 This file is part of "模拟器" (Simulator)
 
@@ -88,7 +88,7 @@ namespace WinFormApp
             Me.Caption = Application.ProductName;
             Me.Theme = Com.WinForm.Theme.Colorful;
             Me.ThemeColor = Com.ColorManipulation.GetRandomColorX();
-            Me.Size = new Size(400, 400);
+            Me.ClientSize = new Size(400, 400);
 
             Me.Loaded += Me_Loaded;
             Me.Closed += Me_Closed;
@@ -350,7 +350,7 @@ namespace WinFormApp
                     Pin_0 = Pin.P15_0;
                 }
 
-                return (P_Bin.ToCharArray()[P_Bin.Length - 1 - ((UInt32)Pin - (UInt32)Pin_0)] == Bit);
+                return (P_Bin[(int)(P_Bin.Length - 1 - ((UInt32)Pin - (UInt32)Pin_0))] == Bit);
             }
 
             return false;
@@ -497,7 +497,7 @@ namespace WinFormApp
 
             SwitchToken = -1;
 
-            for (int i = 0; i <= Switch.Count() - 1; i++)
+            for (int i = 0; i < Switch.Length; i++)
             {
                 if (new Rectangle(new Point(Switch[i].Location.X * UnitSize + _Switch.Client.X, Switch[i].Location.Y * UnitSize + _Switch.Client.Y), _Switch.Client.Size).Contains(GetCursorPositionOfControl(Panel_Map)))
                 {
@@ -534,7 +534,7 @@ namespace WinFormApp
 
         // LED。
 
-        private struct _LED // LED 结构。
+        private class _LED // LED。
         {
             public static Size Size = new Size(25, 25); // 元件占据的总大小（像素，像素）。
             public static Rectangle Client = new Rectangle(new Point(2, 2), new Size(20, 20)); // 元件占据的矩形。
@@ -544,7 +544,7 @@ namespace WinFormApp
             public Pin Pin; // 管脚。
         }
 
-        private _LED[] LED = new _LED[256]; // LED 数组。
+        private _LED[] LED = new _LED[64]; // LED 数组。
 
         private void PaintLED(_LED E)
         {
@@ -565,7 +565,7 @@ namespace WinFormApp
 
         // 数码管。
 
-        private struct _Digitron // 数码管结构。
+        private class _Digitron // 数码管。
         {
             public static Size Size = new Size(50, 75); // 元件占据的总大小（像素，像素）。
             public static Rectangle Client = new Rectangle(new Point(2, 2), new Size(48, 73)); // 元件占据的矩形。
@@ -575,7 +575,7 @@ namespace WinFormApp
             public Pin Pin_Com, Pin_0, Pin_1, Pin_2, Pin_3, Pin_4, Pin_5, Pin_6, Pin_7; // 管脚。
         }
 
-        private _Digitron[] Digitron = new _Digitron[256]; // 数码管数组。
+        private _Digitron[] Digitron = new _Digitron[64]; // 数码管数组。
 
         private void PaintDigitron(_Digitron E)
         {
@@ -671,7 +671,7 @@ namespace WinFormApp
             }
         }
 
-        UInt32[] DigitronRegisterList = new UInt32[] {
+        private UInt32[] DigitronCharset = new UInt32[] {
             0xC0, 0xF9, 0xA4, 0xB0, 0x99, 0x92, 0x82, 0xF8, 0x80, 0x90, /*0-9*/
             0x88, 0x83, 0xC6, 0xA1, 0x86, 0x8E,/*A-F*/
             0x90, 0x89, 0xF9, 0xF1, 0xFF, 0xC7, 0xFF, 0xC8, 0xA3, 0x8C,/*G-P*/
@@ -686,9 +686,9 @@ namespace WinFormApp
 
             UInt32 P;
 
-            if (Value >= 0 && Value <= 35)
+            if (Value >= 0 && Value < DigitronCharset.Length)
             {
-                P = DigitronRegisterList[Value];
+                P = DigitronCharset[Value];
             }
             else if (Value == -1) // "-"号
             {
@@ -705,7 +705,7 @@ namespace WinFormApp
 
             if (ShowDot)
             {
-                P = P - 0x80;
+                P -= 0x80;
             }
 
             if (ComCath)
@@ -718,7 +718,7 @@ namespace WinFormApp
 
         // 点触开关。
 
-        private struct _Switch // 点触开关结构。
+        private class _Switch // 点触开关。
         {
             public static Size Size = new Size(50, 50); // 元件占据的总大小（像素，像素）。
             public static Rectangle Client = new Rectangle(new Point(5, 5), new Size(40, 40)); // 元件占据的矩形。
@@ -730,9 +730,9 @@ namespace WinFormApp
             public Pin Pin_00, Pin_01, Pin_10, Pin_11, Pin_20, Pin_21, Pin_30, Pin_31; // 管脚。
         }
 
-        private _Switch[] Switch = new _Switch[256]; // 点触开关数组。
+        private _Switch[] Switch = new _Switch[64]; // 点触开关数组。
 
-        Int32 SwitchToken = -1; // 当前按下（导通）的点触开关的索引。-1 表示没有按下任何点触开关。
+        private Int32 SwitchToken = -1; // 当前按下（导通）的点触开关的索引。-1 表示没有按下任何点触开关。
 
         private void PaintSwitch(_Switch E)
         {
@@ -781,27 +781,51 @@ namespace WinFormApp
             // 初始化所有元件的封装。
             //
 
-            for (int i = 0; i <= LED.Count() - 1; i++)
+            for (int i = 0; i < LED.Length; i++)
             {
-                LED[i].Color = Color.Empty;
-                LED[i].Location = new Point(-1, -1);
-                LED[i].Pin = Pin.NULL;
+                LED[i] = new _LED
+                {
+                    Color = Color.Empty,
+                    Location = new Point(-1, -1),
+                    Pin = Pin.NULL
+                };
             }
 
-            for (int i = 0; i <= Digitron.Count() - 1; i++)
+            for (int i = 0; i < Digitron.Length; i++)
             {
-                Digitron[i].Color = Color.Empty;
-                Digitron[i].Location = new Point(-1, -1);
-                Digitron[i].Pin_Com = Digitron[i].Pin_0 = Digitron[i].Pin_1 = Digitron[i].Pin_2 = Digitron[i].Pin_3 = Digitron[i].Pin_4 = Digitron[i].Pin_5 = Digitron[i].Pin_6 = Digitron[i].Pin_7 = Pin.NULL;
+                Digitron[i] = new _Digitron
+                {
+                    Color = Color.Empty,
+                    Location = new Point(-1, -1),
+                    Pin_Com = Pin.NULL,
+                    Pin_0 = Pin.NULL,
+                    Pin_1 = Pin.NULL,
+                    Pin_2 = Pin.NULL,
+                    Pin_3 = Pin.NULL,
+                    Pin_4 = Pin.NULL,
+                    Pin_5 = Pin.NULL,
+                    Pin_6 = Pin.NULL,
+                    Pin_7 = Pin.NULL
+                };
             }
 
-            for (int i = 0; i <= Switch.Count() - 1; i++)
+            for (int i = 0; i < Switch.Length; i++)
             {
-                Switch[i].BackColor = Color.Empty;
-                Switch[i].ForeColor = Color.Empty;
-                Switch[i].Text = string.Empty;
-                Switch[i].Location = new Point(-1, -1);
-                Switch[i].Pin_00 = Switch[i].Pin_01 = Switch[i].Pin_10 = Switch[i].Pin_11 = Switch[i].Pin_20 = Switch[i].Pin_21 = Switch[i].Pin_30 = Switch[i].Pin_31 = Pin.NULL;
+                Switch[i] = new _Switch
+                {
+                    BackColor = Color.Empty,
+                    ForeColor = Color.Empty,
+                    Text = string.Empty,
+                    Location = new Point(-1, -1),
+                    Pin_00 = Pin.NULL,
+                    Pin_01 = Pin.NULL,
+                    Pin_10 = Pin.NULL,
+                    Pin_11 = Pin.NULL,
+                    Pin_20 = Pin.NULL,
+                    Pin_21 = Pin.NULL,
+                    Pin_30 = Pin.NULL,
+                    Pin_31 = Pin.NULL
+                };
             }
         }
 
@@ -1407,11 +1431,11 @@ namespace WinFormApp
         // 获取按键代码。
         char getkeycode()
         {
-            if (SwitchToken >= 0 && SwitchToken <= keycodelist.Count() - 1)
+            if (SwitchToken >= 0 && SwitchToken < keycodelist.Length)
             {
                 return keycodelist[SwitchToken];
             }
-            else if (SwitchToken - 16 >= 0 && SwitchToken - 16 <= keycodelist_extend.Count() - 1)
+            else if (SwitchToken - 16 >= 0 && SwitchToken - 16 < keycodelist_extend.Length)
             {
                 return keycodelist_extend[SwitchToken - 16];
             }
