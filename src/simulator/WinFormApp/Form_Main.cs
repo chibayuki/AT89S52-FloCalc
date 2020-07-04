@@ -1,8 +1,8 @@
 ﻿/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-Copyright © 2019 chibayuki@foxmail.com
+Copyright © 2020 chibayuki@foxmail.com
 
 模拟器 (Simulator)
-Version 16.7.11.0.MCU.191017-0000
+Version 16.7.11.0.MCU.200704-1600
 
 This file is part of "模拟器" (Simulator)
 
@@ -358,7 +358,7 @@ namespace WinFormApp
 
         // 可见性。
 
-        private bool ComponentIsInVisible(Point Location)
+        private bool ComponentIsVisible(Point Location)
         {
             //
             // 判断元件所在位置是（true）否在可见区域内。
@@ -552,13 +552,13 @@ namespace WinFormApp
             // 绘制一个 LED。【封装】LED 是直径 20 像素的圆。
             //
 
-            if (E.Pin != Pin.NULL && ComponentIsInVisible(E.Location))
+            if (E.Pin != Pin.NULL && ComponentIsVisible(E.Location))
             {
                 bool Flag = GetFlagOfPin(E.Pin, '0');
 
                 Rectangle Rect_E = new Rectangle(new Point(E.Location.X * UnitSize + _LED.Client.X, E.Location.Y * UnitSize + _LED.Client.Y), _LED.Client.Size);
 
-                CreateMap.FillEllipse(new SolidBrush(Flag ? E.Color : Color.FromArgb(64, E.Color)), Rect_E);
+                CreateMap.FillEllipse(new SolidBrush(Flag ? E.Color : Color.FromArgb(48, E.Color)), Rect_E);
                 CreateMap.DrawEllipse(new Pen(new SolidBrush(Flag ? Color.FromArgb(192, E.Color) : Color.FromArgb(48, E.Color)), 1), Rect_E);
             }
         }
@@ -583,7 +583,7 @@ namespace WinFormApp
             // 绘制一个数码管。【封装】数码管为共阳极，_Digitron.Pin_Com 空置或置 0 表示此数码管正在工作；管脚 A-G，DP（_Digitron.Pin_0-_Digitron.Pin_7）依次代表的 LED 分别位于：正上，右上，右下，正下，左下，左上，正中，小数点。小数点为直径 5 像素的圆，其他 LED 为 24x5（5x24）像素的矩形。
             //
 
-            if (ComponentIsInVisible(E.Location))
+            if (ComponentIsVisible(E.Location))
             {
                 bool On = (E.Pin_Com == Pin.NULL || (E.Pin_Com != Pin.NULL && GetFlagOfPin(E.Pin_Com, '0')));
 
@@ -595,7 +595,7 @@ namespace WinFormApp
 
                     Rectangle Rect_E = new Rectangle(new Point(P_E.X + 9, P_E.Y + 2), new Size(24, 5));
 
-                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(64, E.Color)), Rect_E);
+                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(48, E.Color)), Rect_E);
                     CreateMap.DrawRectangle(new Pen(new SolidBrush(Flag ? Color.FromArgb(192, E.Color) : Color.FromArgb(48, E.Color)), 1), Rect_E);
                 }
 
@@ -605,7 +605,7 @@ namespace WinFormApp
 
                     Rectangle Rect_E = new Rectangle(new Point(P_E.X + 35, P_E.Y + 9), new Size(5, 24));
 
-                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(64, E.Color)), Rect_E);
+                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(48, E.Color)), Rect_E);
                     CreateMap.DrawRectangle(new Pen(new SolidBrush(Flag ? Color.FromArgb(192, E.Color) : Color.FromArgb(48, E.Color)), 1), Rect_E);
                 }
 
@@ -615,7 +615,7 @@ namespace WinFormApp
 
                     Rectangle Rect_E = new Rectangle(new Point(P_E.X + 35, P_E.Y + 42), new Size(5, 24));
 
-                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(64, E.Color)), Rect_E);
+                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(48, E.Color)), Rect_E);
                     CreateMap.DrawRectangle(new Pen(new SolidBrush(Flag ? Color.FromArgb(192, E.Color) : Color.FromArgb(48, E.Color)), 1), Rect_E);
                 }
 
@@ -625,7 +625,7 @@ namespace WinFormApp
 
                     Rectangle Rect_E = new Rectangle(new Point(P_E.X + 9, P_E.Y + 68), new Size(24, 5));
 
-                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(64, E.Color)), Rect_E);
+                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(48, E.Color)), Rect_E);
                     CreateMap.DrawRectangle(new Pen(new SolidBrush(Flag ? Color.FromArgb(192, E.Color) : Color.FromArgb(48, E.Color)), 1), Rect_E);
                 }
 
@@ -635,7 +635,7 @@ namespace WinFormApp
 
                     Rectangle Rect_E = new Rectangle(new Point(P_E.X + 2, P_E.Y + 42), new Size(5, 24));
 
-                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(64, E.Color)), Rect_E);
+                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(48, E.Color)), Rect_E);
                     CreateMap.DrawRectangle(new Pen(new SolidBrush(Flag ? Color.FromArgb(192, E.Color) : Color.FromArgb(48, E.Color)), 1), Rect_E);
                 }
 
@@ -645,7 +645,7 @@ namespace WinFormApp
 
                     Rectangle Rect_E = new Rectangle(new Point(P_E.X + 2, P_E.Y + 9), new Size(5, 24));
 
-                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(64, E.Color)), Rect_E);
+                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(48, E.Color)), Rect_E);
                     CreateMap.DrawRectangle(new Pen(new SolidBrush(Flag ? Color.FromArgb(192, E.Color) : Color.FromArgb(48, E.Color)), 1), Rect_E);
                 }
 
@@ -655,7 +655,7 @@ namespace WinFormApp
 
                     Rectangle Rect_E = new Rectangle(new Point(P_E.X + 9, P_E.Y + 35), new Size(24, 5));
 
-                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(64, E.Color)), Rect_E);
+                    CreateMap.FillRectangle(new SolidBrush(Flag ? E.Color : Color.FromArgb(48, E.Color)), Rect_E);
                     CreateMap.DrawRectangle(new Pen(new SolidBrush(Flag ? Color.FromArgb(192, E.Color) : Color.FromArgb(48, E.Color)), 1), Rect_E);
                 }
 
@@ -665,7 +665,7 @@ namespace WinFormApp
 
                     Rectangle Rect_E = new Rectangle(new Point(P_E.X + 42, P_E.Y + 68), new Size(5, 5));
 
-                    CreateMap.FillEllipse(new SolidBrush(Flag ? E.Color : Color.FromArgb(64, E.Color)), Rect_E);
+                    CreateMap.FillEllipse(new SolidBrush(Flag ? E.Color : Color.FromArgb(48, E.Color)), Rect_E);
                     CreateMap.DrawEllipse(new Pen(new SolidBrush(Flag ? Color.FromArgb(192, E.Color) : Color.FromArgb(48, E.Color)), 1), Rect_E);
                 }
             }
@@ -740,7 +740,7 @@ namespace WinFormApp
             // 绘制一个点触开关。【封装】点触开关是边长 40 像素的正方形。
             //
 
-            if (ComponentIsInVisible(E.Location))
+            if (ComponentIsVisible(E.Location))
             {
                 Rectangle Rect_E = new Rectangle(new Point(E.Location.X * UnitSize + _Switch.Client.X, E.Location.Y * UnitSize + _Switch.Client.Y), _Switch.Client.Size);
 
